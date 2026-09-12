@@ -1,0 +1,37 @@
+{
+  "name": "ai-project-setup",
+  "version": "0.1.0",
+  "description": "Local, zero-dependency pacing and usage-ledger readers for Claude Code and Codex subscription meters.",
+  "license": "MIT",
+  "author": "xericf",
+  "type": "module",
+  "bin": {
+    "agent-pacing": "bin/pacing.mjs",
+    "agent-ledger": "bin/ledger.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin",
+    "src",
+    "agent-meters.config.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "usage",
+    "quota",
+    "pacing",
+    "ledger"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xericf/ai-project-setup.git"
+  }
+}

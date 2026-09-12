@@ -1,0 +1,21 @@
+{
+  "claudeProjectDirGlob": "*",
+  "reviewSummaryDirs": [],
+  "claudeAgentDefsDir": ".claude/agents",
+  "claudeSettingsFile": ".claude/settings.json",
+  "pacing": {
+    "scarceProvider": "claude",
+    "bands": [
+      { "gapBelow": -10, "slots": 2 },
+      { "gapBelow": 10, "inclusive": true, "slots": 1 },
+      { "slots": 0 }
+    ],
+    "sessionBlockUsedPct": 80,
+    "weeklyReserveUsedPct": 90,
+    "tierAdvice": {
+      "perModelMeter": "Current week (Fable)",
+      "allModelMeter": "Current week (all models)"
+    },
+    "sessionMeter": "Current session"
+  }
+}
