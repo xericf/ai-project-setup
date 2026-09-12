@@ -37,7 +37,7 @@ test('codex per-response usage is summed and the cumulative thread total is neve
   assert.equal(runs.length, 1);
   const [run] = runs;
   // 3000 input includes 2000 cached, so fresh input is 1000 and the total is 3300, not 999999.
-  assert.deepEqual(run.tokens, { freshInput: 1000, cacheRead: 2000, cacheWrite: 0, output: 300, total: 3300 });
+  assert.deepEqual(run.tokens, { freshInput: 1000, cacheRead: 2000, cacheWrite: 0, output: 300, total: 3300, reasoning: 0, reasoningKnown: false });
   assert.equal(run.model, 'gpt-6-astra');
   assert.equal(run.effort, 'xhigh');
   assert.equal(run.agent, 'main');
@@ -53,7 +53,7 @@ test('a thread without per-response records falls back to the last cumulative to
   );
   const { runs } = parseCodexRollout(rollout, { fileName: 'rollout-2026-09-12T08-00-00-sess-cum.jsonl', range: utc });
   assert.equal(runs.length, 1);
-  assert.deepEqual(runs[0].tokens, { freshInput: 500, cacheRead: 400, cacheWrite: 0, output: 80, total: 980 });
+  assert.deepEqual(runs[0].tokens, { freshInput: 500, cacheRead: 400, cacheWrite: 0, output: 80, total: 980, reasoning: 0, reasoningKnown: false });
   assert.equal(runs[0].effort, 'medium');
 });
 
@@ -109,7 +109,7 @@ test('repeated content blocks of one claude response are counted once and synthe
   );
   const { runs } = parseClaudeTranscript(transcript, { fileName: 'claude-sess.jsonl', range: utc });
   assert.equal(runs.length, 1);
-  assert.deepEqual(runs[0].tokens, { freshInput: 10, cacheRead: 800, cacheWrite: 190, output: 100, total: 1100 });
+  assert.deepEqual(runs[0].tokens, { freshInput: 10, cacheRead: 800, cacheWrite: 190, output: 100, total: 1100, reasoning: 0, reasoningKnown: false });
   assert.equal(runs[0].events, 1);
   assert.equal(runs[0].agent, 'main');
 });
@@ -331,4 +331,15 @@ test('collectLedger scans a synthetic home and honours the configured sources', 
   assert.equal(all.sources.scanned.length, 3, 'both project dirs, no review summaries');
   assert.equal(all.totals.total, 3300 + 1100 + 1100);
   assert.ok(!all.sources.scanned.some(entry => entry.kind === 'review-summary'));
+});
+
+test('reasoning share comes from Codex reasoning_output_tokens and is null where unreported', async () => {
+  const { reasoningShare, codexUsageTokens } = await import('../src/ledger.js');
+  const codex = codexUsageTokens({ input_tokens: 100, cached_input_tokens: 40, output_tokens: 200, reasoning_output_tokens: 50, total_tokens: 300 });
+  assert.equal(codex.reasoning, 50);
+  assert.equal(codex.reasoningKnown, true);
+  assert.equal(reasoningShare(codex), 25);
+  assert.equal(reasoningShare({ output: 200, reasoning: 0, reasoningKnown: true }), 0, 'zero reasoning on a reporting provider is a real 0%');
+  assert.equal(reasoningShare({ output: 200, reasoning: 0, reasoningKnown: false }), null, 'Claude usage does not report reasoning');
+  assert.equal(reasoningShare({ output: 0, reasoning: 0, reasoningKnown: true }), null, 'no output means no share');
 });

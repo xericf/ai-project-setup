@@ -62,17 +62,20 @@ Model tier: hold.
 Per-response Codex `usage` objects are summed and cumulative fields are never added
 in; repeated Claude content blocks of one response are counted once per
 `(requestId, message.id)`; Codex input is cache-inclusive and Claude input is not,
-and both are normalised to the same four buckets.
+and both are normalised to the same four buckets. `reason%` is reasoning tokens as a
+share of output; Codex reports them per response, Claude usage does not, so Claude rows
+show `-`. Compare it across effort levels: a high-effort group whose reasoning share
+matches a medium group is not getting more thinking for its cost.
 
 ```text
 $ agent-ledger --last 7d --table
 Agent usage ledger  (2026-09-05 .. now, grouped by provider + model + effort)
 
-group                              runs   run%   fresh in  cache read  cache write   output      total  total%  cache%
----------------------------------  ----  -----  ---------  ----------  -----------  -------  ---------  ------  ------
-codex / <model> / ultra               9   9.5%  21,190,435 730,306,176           0  3,806,102 755,302,713  67.0%   97.2%
-codex / <auto-review> / low          33  34.7%  21,174,926  77,927,936           0    127,631  99,230,493   8.8%   78.6%
-claude / <model> / high               1   1.1%       4,432  65,785,593    2,092,412   263,036  68,145,473   6.0%   96.9%
+group                              runs   run%   fresh in  cache read  cache write   output      total  total%  cache%  reason%
+---------------------------------  ----  -----  ---------  ----------  -----------  -------  ---------  ------  ------  -------
+codex / <model> / ultra               9   9.5%  21,190,435 730,306,176           0  3,806,102 755,302,713  67.0%   97.2%    27.6%
+codex / <auto-review> / low          33  34.7%  21,174,926  77,927,936           0    127,631  99,230,493   8.8%   78.6%    38.9%
+claude / <model> / high               1   1.1%       4,432  65,785,593    2,092,412   263,036  68,145,473   6.0%   96.9%        -
 
 totals: 95 runs, 1,127,369,966 tokens, cache-read ratio 95.4%, 0 model mismatch(es)
 

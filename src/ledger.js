@@ -58,14 +58,15 @@ import { homeDir, localDateKey, shiftDay, utcDateKey } from './platform.js';
 export const CAVEAT =
   'Caveat: shares are of locally logged activity only; subscription meters are billed separately and this ledger is not a bill.';
 
-const TOKEN_KEYS = ['freshInput', 'cacheRead', 'cacheWrite', 'output', 'total'];
+const TOKEN_KEYS = ['freshInput', 'cacheRead', 'cacheWrite', 'output', 'total', 'reasoning'];
 
 export function emptyTokens() {
-  return { freshInput: 0, cacheRead: 0, cacheWrite: 0, output: 0, total: 0 };
+  return { freshInput: 0, cacheRead: 0, cacheWrite: 0, output: 0, total: 0, reasoning: 0, reasoningKnown: false };
 }
 
 export function addTokens(target, delta) {
   for (const key of TOKEN_KEYS) target[key] += Number.isFinite(delta?.[key]) ? delta[key] : 0;
+  if (delta?.reasoningKnown === true) target.reasoningKnown = true;
   return target;
 }
 
@@ -79,7 +80,9 @@ export function codexUsageTokens(usage) {
   const output = int(usage?.output_tokens);
   const freshInput = Math.max(0, input - cacheRead);
   const total = Number.isFinite(usage?.total_tokens) ? int(usage.total_tokens) : input + output;
-  return { freshInput, cacheRead, cacheWrite, output, total };
+  // Codex logs reasoning tokens as a subset of output; Claude usage does not split them.
+  const reasoning = Number.isFinite(usage?.reasoning_output_tokens) ? int(usage.reasoning_output_tokens) : null;
+  return { freshInput, cacheRead, cacheWrite, output, total, reasoning, reasoningKnown: reasoning !== null };
 }
 
 /** Claude reports cache-exclusive input; the total is the sum of the four buckets. */
@@ -88,7 +91,7 @@ export function claudeUsageTokens(usage) {
   const cacheRead = int(usage?.cache_read_input_tokens);
   const cacheWrite = int(usage?.cache_creation_input_tokens);
   const output = int(usage?.output_tokens);
-  return { freshInput, cacheRead, cacheWrite, output, total: freshInput + cacheRead + cacheWrite + output };
+  return { freshInput, cacheRead, cacheWrite, output, total: freshInput + cacheRead + cacheWrite + output, reasoning: null, reasoningKnown: false };
 }
 
 /** Review summaries use the camel-cased SDK spelling of the same four buckets. */
@@ -97,7 +100,7 @@ export function reviewUsageTokens(usage) {
   const cacheRead = int(usage?.cacheReadInputTokens);
   const cacheWrite = int(usage?.cacheCreationInputTokens);
   const output = int(usage?.outputTokens);
-  return { freshInput, cacheRead, cacheWrite, output, total: freshInput + cacheRead + cacheWrite + output };
+  return { freshInput, cacheRead, cacheWrite, output, total: freshInput + cacheRead + cacheWrite + output, reasoning: null, reasoningKnown: false };
 }
 
 /** Strips the CLI context-window suffix and a dated release suffix so models compare equal. */
@@ -113,6 +116,12 @@ export function inRange(timestamp, { since = null, until = null, dateKey = local
   if (since && key < since) return false;
   if (until && key > until) return false;
   return true;
+}
+
+/** Reasoning tokens as a share of output, or null when the provider does not report them. */
+export function reasoningShare(tokens) {
+  if (!tokens?.reasoningKnown || !(tokens.output > 0)) return null;
+  return (tokens.reasoning / tokens.output) * 100;
 }
 
 export function cacheReadRatio(tokens) {
@@ -180,7 +189,7 @@ export function resolveClaudeEffort({
 const runKey = parts => parts.map(part => part ?? '').join(' ');
 
 const runsFromBuckets = buckets => [...buckets.values()]
-  .map(run => ({ ...run, tokens: { ...run.tokens }, cacheReadRatio: cacheReadRatio(run.tokens) }));
+  .map(run => ({ ...run, tokens: { ...run.tokens }, cacheReadRatio: cacheReadRatio(run.tokens), reasoningShare: reasoningShare(run.tokens) }));
 
 /* ------------------------------------------------------------------- parsers */
 
@@ -375,6 +384,7 @@ export function parseReviewSummary(summary, { fileName = '', range = {} } = {}) 
       start: finishedAt,
       tokens,
       cacheReadRatio: cacheReadRatio(tokens),
+      reasoningShare: reasoningShare(tokens),
       events: 1,
       mismatch,
       requestedModel: summary.requestedModel ?? null,
@@ -422,6 +432,7 @@ export function aggregate(runs, { by = ['provider', 'model', 'effort'] } = {}) {
     runShare: runCount ? (group.runs / runCount) * 100 : 0,
     totalShare: totals.total ? (group.tokens.total / totals.total) * 100 : 0,
     cacheReadRatio: cacheReadRatio(group.tokens),
+    reasoningShare: reasoningShare(group.tokens),
   })).sort((a, b) => b.tokens.total - a.tokens.total || a.label.localeCompare(b.label));
 
   return {
@@ -431,6 +442,7 @@ export function aggregate(runs, { by = ['provider', 'model', 'effort'] } = {}) {
       runs: runCount,
       ...totals,
       cacheReadRatio: cacheReadRatio(totals),
+      reasoningShare: reasoningShare(totals),
       mismatches: runs.filter(run => run.mismatch === true).length,
     },
   };
@@ -755,11 +767,12 @@ export function formatTable(report, { runs = false } = {}) {
   out.push(`Agent usage ledger  (${range}, grouped by ${report.by.join(' + ')})`);
   out.push('');
   out.push(renderTable(
-    ['group', 'runs', 'run%', 'fresh in', 'cache read', 'cache write', 'output', 'total', 'total%', 'cache%'],
+    ['group', 'runs', 'run%', 'fresh in', 'cache read', 'cache write', 'output', 'total', 'total%', 'cache%', 'reason%'],
     report.groups.map(group => [
       group.label, number(group.runs), percent(group.runShare), number(group.tokens.freshInput),
       number(group.tokens.cacheRead), number(group.tokens.cacheWrite), number(group.tokens.output),
       number(group.tokens.total), percent(group.totalShare), percent(group.cacheReadRatio),
+      group.reasoningShare === null ? '-' : percent(group.reasoningShare),
     ]),
   ));
   out.push('');
@@ -777,10 +790,11 @@ export function formatTable(report, { runs = false } = {}) {
   if (runs) {
     out.push('');
     out.push(renderTable(
-      ['run', 'start', 'provider', 'model', 'effort', 'effort src', 'agent', 'total', 'cache%', 'mismatch'],
+      ['run', 'start', 'provider', 'model', 'effort', 'effort src', 'agent', 'total', 'cache%', 'reason%', 'mismatch'],
       report.runs.map(run => [
         run.id, run.start ?? '-', run.provider, run.model, run.effort, run.effortSource, run.agent,
         number(run.tokens.total), percent(run.cacheReadRatio),
+        run.reasoningShare === null ? '-' : percent(run.reasoningShare),
         run.mismatch === null ? 'unknown' : String(run.mismatch),
       ]),
     ));
