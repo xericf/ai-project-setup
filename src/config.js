@@ -33,6 +33,48 @@ export const DEFAULT_CONFIG = Object.freeze({
     },
     sessionMeter: 'Current session',
   },
+  // Administrative records of a project run with the wave loop (agent-wave). Paths are
+  // relative to the config root. Only the files that exist are checked.
+  records: {
+    tasksFile: 'execution/tasks.json',
+    leasesFile: 'execution/leases.json',
+    resumeFile: 'execution/RESUME_STATUS.md',
+    nowHeading: '## Now',
+    nowMaxLines: 25,
+    resumeMaxBytes: 3000,
+    priorityFile: 'execution/guidance/PRIORITY.md',
+    taskBoardFile: 'execution/TASK_BOARD.md',
+    policyFile: 'AGENTS.md',
+    liveDocs: ['AGENTS.md', 'CLAUDE.md', 'README.md', 'execution', 'execution/guidance', 'execution/history', 'execution/decisions', 'templates'],
+    archivedDocs: [],
+    statuses: { planned: 'planned', implementing: 'implementing', done: 'done' },
+    deferredScheduling: 'deferred-stretch',
+    runtimeAllocationKind: 'runtime-allocation',
+  },
+  // Integrator guard: implementation code reaches the integration branch only through a
+  // commit carrying the trailer, or a merge commit.
+  guard: {
+    implementationRoots: ['apps/', 'packages/', 'workers/', 'src/'],
+    ownedPrefixes: [],
+    integratesTrailer: 'Integrates',
+    reviewedTrailer: 'Reviewed-by',
+    evidenceDir: 'docs/evidence/',
+    evidenceWarnFiles: 20,
+  },
+  // Wave supervisor defaults; command-line flags override.
+  wave: {
+    runner: 'codex',
+    model: { codex: 'gpt-5-codex', claude: 'claude-opus-5' },
+    effort: 'high',
+    budget: 250,
+    maxWaves: 6,
+    sleepMinutes: 5,
+    waveTimeoutMinutes: 180,
+    milestone: 'auto',
+    promptTemplate: 'templates/WAVE_PROMPT.md',
+    stateDir: '.agent-waves',
+    preflight: ['admin'],
+  },
 });
 
 export class ConfigError extends Error {

@@ -1,13 +1,35 @@
 # ai-project-setup
 
-Two small, dependency-free Node tools that read the **local** logs and subscription
-meters your Claude Code and Codex CLIs already write, and turn them into a pacing
-decision and a usage ledger.
+Dependency-free Node tools for running long autonomous development on Claude Code and
+Codex subscription plans without burning the weekly allowance on context re-reads.
+
+**Meters and accounting**
 
 - `agent-pacing` — how many parallel implementation slots the scarce provider can
   carry right now, from its session and weekly meters.
 - `agent-ledger` — where your tokens actually went: run and token shares per
   provider, model, reasoning effort and agent, plus the cache-read ratio.
+
+**The wave loop** (see [docs/WAVE_LOOP.md](docs/WAVE_LOOP.md); why, in
+[docs/LEARNINGS.md](docs/LEARNINGS.md))
+
+- `agent-init` — drop the policy file, prompt templates, guidance folder and config into a
+  project.
+- `agent-wave` — run the integrator as a loop of short-lived sessions: preflight the records,
+  read the meters, fill the wave prompt from state files, launch one fresh session, verify
+  no code reached the branch outside a reviewed integration.
+- `agent-progress` — packets done, ready to dispatch, open leases with remaining work, and
+  status/lease mismatches.
+- `agent-admin` — the administrative records stay consistent with each other and the policy.
+- `agent-board` — a generated task board that cannot drift from the task graph.
+- `agent-guard` — the integrator did not implement: implementation commits carry an
+  `Integrates:` trailer or they are violations.
+- `agent-manifest` — evidence manifests with hashes so raw captures stay out of git.
+
+```sh
+npm i -g ai-project-setup
+cd my-project && agent-init && agent-admin && agent-wave --dry-run --once
+```
 
 No network calls, no API keys, no model turns. Nothing prints prompts, transcript
 text, review prose, environment values, tokens or account identifiers — only ids,
@@ -152,6 +174,14 @@ assumed to exist.
 
 Environment overrides: `AGENT_METERS_CLAUDE_EXE` and `AGENT_METERS_CODEX_EXE` (each
 must be an existing absolute path to a real binary).
+
+The wave-loop tools read three more sections, all with defaults (see `src/config.js`):
+
+| Key | Meaning |
+|---|---|
+| `records.*` | where the administrative records live (`tasksFile`, `leasesFile`, `resumeFile`, `priorityFile`, `taskBoardFile`, `policyFile`), the Now block heading and limits, the `liveDocs` whose links are checked, the `archivedDocs` no live document may cite, and the status vocabulary. Checks whose file is absent are skipped. |
+| `guard.*` | `implementationRoots` the integrator may not edit directly, `ownedPrefixes` it may, the trailer names, and the evidence-flood warning threshold. |
+| `wave.*` | runner, per-runner model, effort, tool-call `budget`, `maxWaves`, `sleepMinutes`, `waveTimeoutMinutes` (a safety net, default 180), `milestone`, `promptTemplate`, `stateDir`, `preflight`. Flags override. |
 
 ## Platform discovery order
 

@@ -7,7 +7,14 @@
   "type": "module",
   "bin": {
     "agent-pacing": "bin/pacing.mjs",
-    "agent-ledger": "bin/ledger.mjs"
+    "agent-ledger": "bin/ledger.mjs",
+    "agent-wave": "bin/wave.mjs",
+    "agent-guard": "bin/guard.mjs",
+    "agent-progress": "bin/progress.mjs",
+    "agent-admin": "bin/admin.mjs",
+    "agent-board": "bin/board.mjs",
+    "agent-manifest": "bin/manifest.mjs",
+    "agent-init": "bin/init.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -15,6 +22,8 @@
   "files": [
     "bin",
     "src",
+    "templates",
+    "docs",
     "agent-meters.config.json",
     "README.md",
     "LICENSE"
