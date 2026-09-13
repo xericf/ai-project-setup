@@ -32,7 +32,8 @@ test('composePrompt fills placeholders inside a text fence and leaves unknown ke
 test('runnerInvocation puts the prompt on stdin and never in argv', () => {
   const codex = runnerInvocation({ runner: 'codex', exe: 'C:/codex.exe', model: 'm', effort: 'high', repo: '/r', lastMessageFile: '/r/last.md', extra: ['--x'] });
   assert.equal(codex.exe, 'C:/codex.exe');
-  assert.deepEqual(codex.args, ['exec', '--full-auto', '-C', '/r', '--sandbox', 'workspace-write', '-m', 'm', '-c', 'model_reasoning_effort="high"', '-o', '/r/last.md', '--x', '-']);
+  assert.deepEqual(codex.args, ['exec', '-C', '/r', '--sandbox', 'workspace-write', '-c', 'approval_policy="never"', '-m', 'm', '-c', 'model_reasoning_effort="high"', '-o', '/r/last.md', '--x', '-']);
+  assert.ok(!codex.args.includes('--full-auto'), 'codex-cli >= 0.154 rejects --full-auto on exec');
   const claude = runnerInvocation({ runner: 'claude', exe: '/bin/claude', model: null, effort: 'high', repo: '/r', lastMessageFile: '/r/last.md' });
   assert.deepEqual(claude.args, ['-p', '--permission-mode', 'acceptEdits', '--output-format', 'text']);
 });

@@ -120,6 +120,10 @@ async function main(argv) {
     writeFileSync(`${prefix}-stderr.log`, run.stderr ?? '');
     if (run.error?.code === 'ENOENT') { process.stdout.write(`runner executable could not be spawned: ${exe}\n`); return 3; }
     const timedOut = run.error?.code === 'ETIMEDOUT' || run.signal === 'SIGTERM';
+    if (run.status !== 0 && (run.stderr ?? '').trim()) {
+      // Surface the runner's own error (bad flag, auth, model name) instead of a bare exit code.
+      process.stdout.write(`runner exited ${run.status ?? 'by signal'}; last stderr lines:\n${run.stderr.trim().split(/\r?\n/).slice(-8).join('\n')}\n`);
+    }
     const minutes = ((Date.now() - started) / 60_000).toFixed(1);
     const after = runGuard({ since: state.lastHead, cwd: root, guard });
     const head = git(['rev-parse', '--short', 'HEAD']);
