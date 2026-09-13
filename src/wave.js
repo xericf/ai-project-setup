@@ -82,10 +82,7 @@ export function composePrompt(template, fill) {
 /** Runner command line. The prompt travels on stdin, never in argv. */
 export function runnerInvocation({ runner, exe, model, effort, repo, lastMessageFile, extra = [] }) {
   if (runner === 'codex') {
-    // codex-cli >= 0.154 dropped `--full-auto` from `exec`. Its old meaning was the workspace-write
-    // sandbox with no interactive approvals, so spell both out; a non-interactive wave cannot answer
-    // an approval prompt inherited from ~/.codex/config.toml.
-    return { exe, args: ['exec', '-C', repo, '--sandbox', 'workspace-write', '-c', 'approval_policy="never"', ...(model ? ['-m', model] : []), '-c', `model_reasoning_effort="${effort}"`, '-o', lastMessageFile, ...extra, '-'] };
+    return { exe, args: ['exec', '--full-auto', '-C', repo, '--sandbox', 'workspace-write', ...(model ? ['-m', model] : []), '-c', `model_reasoning_effort="${effort}"`, '-o', lastMessageFile, ...extra, '-'] };
   }
   return { exe, args: ['-p', '--permission-mode', 'acceptEdits', ...(model ? ['--model', model] : []), '--output-format', 'text', ...extra] };
 }
